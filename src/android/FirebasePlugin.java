@@ -45,8 +45,8 @@ public class FirebasePlugin extends CordovaPlugin {
 
     private static boolean inBackground = true;
     private static ArrayList<Bundle> notificationStack = null;
-    private static WeakReference<CallbackContext> notificationCallbackContext;
-    private static WeakReference<CallbackContext> tokenRefreshCallbackContext;
+    private static CallbackContext notificationCallbackContext;
+    private static CallbackContext tokenRefreshCallbackContext;
 
     @Override
     protected void pluginInitialize() {
@@ -124,13 +124,21 @@ public class FirebasePlugin extends CordovaPlugin {
     }
 
     @Override
+    public void onStart() {
+        FirebasePlugin.inBackground = false;
+        Log.d(TAG, "inBackground: " + FirebasePlugin.inBackground);
+    }
+
+    @Override
     public void onPause(boolean multitasking) {
         FirebasePlugin.inBackground = true;
+        Log.d(TAG, "inBackground: " + FirebasePlugin.inBackground);
     }
 
     @Override
     public void onResume(boolean multitasking) {
         FirebasePlugin.inBackground = false;
+        Log.d(TAG, "inBackground: " + FirebasePlugin.inBackground);
     }
 
     @Override
@@ -140,7 +148,7 @@ public class FirebasePlugin extends CordovaPlugin {
     }
 
     private void onNotificationOpen(final CallbackContext callbackContext) {
-        FirebasePlugin.notificationCallbackContext = new WeakReference<CallbackContext>(callbackContext);
+        FirebasePlugin.notificationCallbackContext = callbackContext;
         if (FirebasePlugin.notificationStack != null) {
             for (Bundle bundle : FirebasePlugin.notificationStack) {
                 FirebasePlugin.sendNotification(bundle);
@@ -150,7 +158,7 @@ public class FirebasePlugin extends CordovaPlugin {
     }
 
     private void onTokenRefresh(final CallbackContext callbackContext) {
-        FirebasePlugin.tokenRefreshCallbackContext = new WeakReference<CallbackContext>(callbackContext);
+        FirebasePlugin.tokenRefreshCallbackContext = callbackContext;
 
         cordova.getThreadPool().execute(new Runnable() {
             public void run() {
@@ -175,7 +183,7 @@ public class FirebasePlugin extends CordovaPlugin {
             notificationStack.add(bundle);
             return;
         }
-        final CallbackContext callbackContext = FirebasePlugin.notificationCallbackContext.get();
+        final CallbackContext callbackContext = FirebasePlugin.notificationCallbackContext;
         if (callbackContext != null && bundle != null) {
             JSONObject json = new JSONObject();
             Set<String> keys = bundle.keySet();
@@ -198,7 +206,7 @@ public class FirebasePlugin extends CordovaPlugin {
         if(FirebasePlugin.tokenRefreshCallbackContext == null) {
             return;
         }
-        final CallbackContext callbackContext = FirebasePlugin.tokenRefreshCallbackContext.get();
+        final CallbackContext callbackContext = FirebasePlugin.tokenRefreshCallbackContext;
         if (callbackContext != null && token != null) {
             PluginResult pluginresult = new PluginResult(PluginResult.Status.OK, token);
             pluginresult.setKeepCallback(true);
@@ -211,8 +219,7 @@ public class FirebasePlugin extends CordovaPlugin {
     }
 
     public static boolean hasNotificationsCallback() {
-        return FirebasePlugin.notificationCallbackContext != null &&
-                FirebasePlugin.notificationCallbackContext.get() != null;
+        return FirebasePlugin.notificationCallbackContext != null;
     }
 
     @Override
